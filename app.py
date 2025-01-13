@@ -44,7 +44,14 @@ def get_google_sheet_data(staff_name):
             st.info(f"No data found for {staff_name}")
             return pd.DataFrame(columns=['Date', 'Start Time', 'Alcohol Check', 'End Time'])
         
-        return pd.DataFrame(values[1:], columns=values[0])
+        # Determine the column names dynamically
+        column_names = values[0] if values else ['Date', 'Start Time', 'Alcohol Check', 'End Time']
+        
+        # Create the DataFrame, handling missing columns
+        df = pd.DataFrame(values[1:], columns=column_names)
+        df = df.reindex(columns=['Date', 'Start Time', 'Alcohol Check', 'End Time'], fill_value='')
+        
+        return df
     except Exception as e:
         st.error(f"Error loading data for {staff_name}: {e}")
         return pd.DataFrame(columns=['Date', 'Start Time', 'Alcohol Check', 'End Time'])
