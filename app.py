@@ -99,31 +99,35 @@ with col1:
 with col2:
     if st.button('End Work', use_container_width=True):
         df = get_google_sheet_data(selected_staff)
-        # Find the last row without an end time
-        if not df.empty and any(df['End Time'].isna() | (df['End Time'] == '')):
-            now = datetime.now()
-            end_time = now.strftime('%I:%M:%S %p')
-            # Update the last row with end time
-            row_number = df[df['End Time'].isna() | (df['End Time'] == '')].index[-1] + 2
-            
-            SPREADSHEET_ID = st.secrets["spreadsheet_id"]
-            RANGE_NAME = f"'{selected_staff}'!D{row_number}"
-            
-            credentials = get_google_sheets_credentials()
-            service = build('sheets', 'v4', credentials=credentials)
-            sheet = service.spreadsheets()
-            
-            body = {'values': [[end_time]]}
-            result = sheet.values().update(
-                spreadsheetId=SPREADSHEET_ID,
-                range=RANGE_NAME,
-                valueInputOption='USER_ENTERED',
-                body=body
-            ).execute()
-            
-            st.success(f'Clocked out at {end_time}')
+        if not df.empty:
+            # Find the last row without an end time
+            open_entry = df[df['End Time'].isna() | (df['End Time'] == '')]
+            if not open_entry.empty:
+                now = datetime.now()
+                end_time = now.strftime('%I:%M:%S %p')
+                # Update the last row with end time
+                row_number = open_entry.index[-1] + 2
+                
+                SPREADSHEET_ID = st.secrets["general"]["spreadsheet_id"]
+                RANGE_NAME = f"'{selected_staff}'!D{row_number}"
+                
+                credentials = get_google_sheets_credentials()
+                service = build('sheets', 'v4', credentials=credentials)
+                sheet = service.spreadsheets()
+                
+                body = {'values': [[end_time]]}
+                result = sheet.values().update(
+                    spreadsheetId=SPREADSHEET_ID,
+                    range=RANGE_NAME,
+                    valueInputOption='USER_ENTERED',
+                    body=body
+                ).execute()
+                
+                st.success(f'Clocked out at {end_time}')
+            else:
+                st.warning('No open clock-in entry found')
         else:
-            st.warning('No open clock-in entry found')
+            st.warning('No data found for the selected staff member')
 
 # Display timesheet
 st.markdown('### Recent Time Entries')
