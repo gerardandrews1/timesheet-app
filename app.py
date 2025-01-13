@@ -53,7 +53,7 @@ def append_to_sheet(staff_name, row_data):
     service = build('sheets', 'v4', credentials=credentials)
     sheet = service.spreadsheets()
     
-    SPREADSHEET_ID = st.secrets["spreadsheet_id"]
+    SPREADSHEET_ID = st.secrets["general"]["spreadsheet_id"]
     RANGE_NAME = f"'{staff_name}'!A:E"
     
     values = [row_data]
