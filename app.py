@@ -41,11 +41,12 @@ def get_google_sheet_data(staff_name):
         
         values = result.get('values', [])
         if not values:
+            st.info(f"No data found for {staff_name}")
             return pd.DataFrame(columns=['Date', 'Start Time', 'Alcohol Check', 'End Time'])
         
         return pd.DataFrame(values[1:], columns=values[0])
     except Exception as e:
-        st.error(f"Error loading data for {staff_name}. Make sure their sheet exists.")
+        st.error(f"Error loading data for {staff_name}: {e}")
         return pd.DataFrame(columns=['Date', 'Start Time', 'Alcohol Check', 'End Time'])
 
 def append_to_sheet(staff_name, row_data):
