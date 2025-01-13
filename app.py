@@ -30,7 +30,7 @@ def get_google_sheet_data(staff_name):
     service = build('sheets', 'v4', credentials=credentials)
     sheet = service.spreadsheets()
     
-    SPREADSHEET_ID = st.secrets["spreadsheet_id"]
+    SPREADSHEET_ID = st.secrets["general"]["spreadsheet_id"]
     RANGE_NAME = f"'{staff_name}'!A:E"  # Each staff member has their own tab
     
     try:
