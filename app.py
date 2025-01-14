@@ -17,6 +17,13 @@ STAFF_MEMBERS = [
     "Harry",
     "Colm",
     "Rose",
+    "Joe",
+    "Tyler",
+    "Jack",
+    "Andrew",
+    "Kris",
+    "Ben",
+    "Isaac"
     # Add all staff names here
 ]
 
