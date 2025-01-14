@@ -132,6 +132,7 @@ with col1:
         append_to_sheet(selected_staff, row_data)
         st.success(f'Clocked in at {row_data[1]}')
 
+
 with col2:
     if st.button('End Work', use_container_width=True):
         df = get_google_sheet_data(selected_staff)
@@ -142,16 +143,17 @@ with col2:
             now = datetime.now()
             end_time = now.strftime('%I:%M:%S %p')
             
-            # Update the last row with end time and calculate hours worked
-            last_clock_in_row = open_rows.iloc[-1]
-            row_number = last_clock_in_row.name # Use 1-based indexing
+            # Get the actual row number in the sheet by counting all rows including the header
+            row_number = len(df) + 1  # Add 1 for the header row
             
             SPREADSHEET_ID = st.secrets["general"]["spreadsheet_id"]
-            RANGE_NAME = f"'{selected_staff}'!D{row_number},E{row_number}"
             
             credentials = get_google_sheets_credentials()
             service = build('sheets', 'v4', credentials=credentials)
             sheet = service.spreadsheets()
+            
+            # Get the start time from the last open row
+            last_clock_in_row = open_rows.iloc[-1]
             
             update_requests = [
                 {
