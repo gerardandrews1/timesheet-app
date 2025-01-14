@@ -112,6 +112,7 @@ st.subheader(f"Logged in as: {selected_staff}")
 
 # Get the current user's last clock-in time
 df = get_google_sheet_data(selected_staff)
+st.write()
 if not df.empty and any(df['End Time'].isna() | (df['End Time'] == '')):
     last_clock_in = df[df['End Time'].isna() | (df['End Time'] == '')].iloc[-1]['Start Time']
     st.info(f"You last clocked in at {last_clock_in}")
@@ -167,3 +168,4 @@ st.markdown('### Recent Time Entries')
 df = get_google_sheet_data(selected_staff)
 if not df.empty:
     st.dataframe(df, use_container_width=True)
+    st.write(df)
