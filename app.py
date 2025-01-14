@@ -160,9 +160,4 @@ with col2:
 st.markdown('### Recent Time Entries')
 df = get_google_sheet_data(selected_staff)
 if not df.empty:
-    st.dataframe(
-        df,
-        columns=['Date', 'Start Time', 'Alcohol Check', 'End Time', 'Hours Worked'],
-        hide_index=True,
-        use_container_width=True
-    )
+    st.write(df)
