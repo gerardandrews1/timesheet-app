@@ -112,7 +112,7 @@ selected_staff = st.selectbox(
 )
 
 # Show selected staff member
-st.write(f"Logged in as: {selected_staff}")
+st.write(f"#### Logged in as: {selected_staff}")
 
 # Get the current user's last clock-in time
 df = get_google_sheet_data(selected_staff)
