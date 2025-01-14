@@ -44,14 +44,15 @@ def get_google_sheet_data(staff_name):
         if not values:
             return pd.DataFrame(columns=['Date', 'Start Time', 'Alcohol Check', 'End Time', 'Hours Worked'])
         
-        # Create the DataFrame, handling missing columns
+        # Create the DataFrame, handling varying number of columns
         df = pd.DataFrame(values[1:])
-        df.columns = ['Date', 'Start Time', 'Alcohol Check', 'End Time', 'Hours Worked']
         
-        # Fill in any missing columns with empty strings
-        for col in ['Date', 'Start Time', 'Alcohol Check', 'End Time', 'Hours Worked']:
+        # Ensure we have the expected columns, filling in missing ones with empty strings
+        expected_columns = ['Date', 'Start Time', 'Alcohol Check', 'End Time', 'Hours Worked']
+        for col in expected_columns:
             if col not in df.columns:
                 df[col] = ''
+        df = df[expected_columns]
         
         # Calculate hours worked
         df['Hours Worked'] = df.apply(lambda row: calculate_hours_worked(row['Start Time'], row['End Time']), axis=1)
@@ -60,6 +61,7 @@ def get_google_sheet_data(staff_name):
     except Exception as e:
         st.error(f"Error loading data for {staff_name}: {str(e)}")
         return pd.DataFrame(columns=['Date', 'Start Time', 'Alcohol Check', 'End Time', 'Hours Worked'])
+
 
 def calculate_hours_worked(start_time, end_time):
     if start_time and end_time:
