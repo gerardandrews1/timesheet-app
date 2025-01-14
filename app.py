@@ -135,11 +135,13 @@ with col1:
 with col2:
     if st.button('End Work', use_container_width=True):
         df = get_google_sheet_data(selected_staff)
+        
         # Find the last row without an end time
         open_rows = df[df['End Time'].isna() | (df['End Time'] == '')]
         if not open_rows.empty:
             now = datetime.now()
             end_time = now.strftime('%I:%M:%S %p')
+            
             # Update the last row with end time and calculate hours worked
             last_clock_in_row = open_rows.iloc[-1]
             row_number = last_clock_in_row.name + 1  # Use 1-based indexing
