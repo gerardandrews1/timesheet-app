@@ -112,7 +112,6 @@ st.subheader(f"Logged in as: {selected_staff}")
 
 # Get the current user's last clock-in time
 df = get_google_sheet_data(selected_staff)
-st.write()
 if not df.empty and any(df['End Time'].isna() | (df['End Time'] == '')):
     last_clock_in = df[df['End Time'].isna() | (df['End Time'] == '')].iloc[-1]['Start Time']
     st.info(f"You last clocked in at {last_clock_in}")
@@ -142,7 +141,7 @@ with col2:
             end_time = now.strftime('%I:%M:%S %p')
             # Update the last row with end time and calculate hours worked
             last_clock_in_row = df[df['End Time'].isna() | (df['End Time'] == '')].iloc[-1]
-            row_number = last_clock_in_row.name + 2
+            row_number = last_clock_in_row.name + 1  # Use 1-based indexing
             
             SPREADSHEET_ID = st.secrets["general"]["spreadsheet_id"]
             RANGE_NAME = f"'{selected_staff}'!D{row_number},E{row_number}"
@@ -168,4 +167,3 @@ st.markdown('### Recent Time Entries')
 df = get_google_sheet_data(selected_staff)
 if not df.empty:
     st.dataframe(df, use_container_width=True)
-    st.write(df)
