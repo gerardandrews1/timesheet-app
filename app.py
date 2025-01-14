@@ -136,11 +136,12 @@ with col2:
     if st.button('End Work', use_container_width=True):
         df = get_google_sheet_data(selected_staff)
         # Find the last row without an end time
-        if not df.empty and any(df['End Time'].isna() | (df['End Time'] == '')):
+        open_rows = df[df['End Time'].isna() | (df['End Time'] == '')]
+        if not open_rows.empty:
             now = datetime.now()
             end_time = now.strftime('%I:%M:%S %p')
             # Update the last row with end time and calculate hours worked
-            last_clock_in_row = df[df['End Time'].isna() | (df['End Time'] == '')].iloc[-1]
+            last_clock_in_row = open_rows.iloc[-1]
             row_number = last_clock_in_row.name + 1  # Use 1-based indexing
             
             SPREADSHEET_ID = st.secrets["general"]["spreadsheet_id"]
@@ -174,4 +175,4 @@ with col2:
 st.markdown('### Recent Time Entries')
 df = get_google_sheet_data(selected_staff)
 if not df.empty:
-    st.dataframe(df, use_container_width=True)
+    st.dataframe(df, use_container_width=True, height=300)
