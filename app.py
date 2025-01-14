@@ -25,8 +25,6 @@ def get_google_sheets_credentials():
     )
     return credentials
 
-
-
 def get_google_sheet_data(staff_name):
     credentials = get_google_sheets_credentials()
     service = build('sheets', 'v4', credentials=credentials)
@@ -42,32 +40,35 @@ def get_google_sheet_data(staff_name):
         ).execute()
         
         values = result.get('values', [])
-        if not values:
-            return pd.DataFrame(columns=['Date', 'Start Time', 'Alcohol Check', 'End Time', 'Hours Worked'])
         
-        # Get the header and data rows
-        headers = values[0] if len(values) > 0 else ['Date', 'Start Time', 'Alcohol Check', 'End Time', 'Hours Worked']
-        data_rows = values[1:] if len(values) > 1 else []
+        # Define the columns we expect
+        expected_columns = ['Date', 'Start Time', 'Alcohol Check', 'End Time', 'Hours Worked']
         
-        # Ensure each row has 5 columns
-        padded_data = [row + [''] * (5 - len(row)) for row in data_rows]
+        if not values or len(values) <= 1:  # If no data or only header
+            return pd.DataFrame(columns=expected_columns)
+            
+        # Create DataFrame and handle missing columns
+        df = pd.DataFrame(values[1:])  # Skip header row
         
-        # Create DataFrame
-        df = pd.DataFrame(padded_data, columns=['Date', 'Start Time', 'Alcohol Check', 'End Time', 'Hours Worked'])
+        # If DataFrame is empty after creation, return empty DataFrame with correct columns
+        if df.empty:
+            return pd.DataFrame(columns=expected_columns)
+            
+        # Ensure we have enough columns
+        while len(df.columns) < len(expected_columns):
+            df[len(df.columns)] = ''
+            
+        # Rename columns
+        df.columns = expected_columns
         
-        # Calculate hours worked only for rows with both start and end times
-        df.loc[df['End Time'].notna() & (df['End Time'] != '') & (df['Hours Worked'] == ''), 'Hours Worked'] = \
-            df[df['End Time'].notna() & (df['End Time'] != '') & (df['Hours Worked'] == '')].apply(
-                lambda row: calculate_hours_worked(row['Start Time'], row['End Time']), 
-                axis=1
-            )
+        # Fill any missing values with empty string
+        df = df.fillna('')
         
         return df
+        
     except Exception as e:
         st.error(f"Error loading data for {staff_name}: {str(e)}")
-        return pd.DataFrame(columns=['Date', 'Start Time', 'Alcohol Check', 'End Time', 'Hours Worked'])
-
-
+        return pd.DataFrame(columns=expected_columns)
 
 def calculate_hours_worked(start_time, end_time):
     if start_time and end_time:
@@ -120,8 +121,8 @@ st.subheader(f"Logged in as: {selected_staff}")
 
 # Get the current user's last clock-in time
 df = get_google_sheet_data(selected_staff)
-if not df.empty and any(df['End Time'].isna() | (df['End Time'] == '')):
-    last_clock_in = df[df['End Time'].isna() | (df['End Time'] == '')].iloc[-1]['Start Time']
+if not df.empty and any(df['End Time'] == ''):
+    last_clock_in = df[df['End Time'] == ''].iloc[-1]['Start Time']
     st.info(f"You last clocked in at {last_clock_in}")
 
 # Create two columns for Start and End buttons
@@ -144,18 +145,20 @@ with col2:
     if st.button('End Work', use_container_width=True):
         df = get_google_sheet_data(selected_staff)
         
-        # Find the last row without an end time
-        open_rows = df[df['End Time'].isna() | (df['End Time'] == '')]
+        # Find rows without an end time
+        open_rows = df[df['End Time'].fillna('') == '']
+        
         if not open_rows.empty:
             now = datetime.now()
             end_time = now.strftime('%I:%M:%S %p')
             
-            # Get the actual row number in the sheet
-            row_number = len(df) + 1  # Add 1 for header row
+            # Get the last row number from the dataframe
+            last_row_index = df.index[-1]
+            row_number = last_row_index + 2  # Add 2 to account for 0-based index and header row
             
             # Get the start time from the last open row
-            last_clock_in_row = open_rows.iloc[-1]
-            hours_worked = calculate_hours_worked(last_clock_in_row['Start Time'], end_time)
+            start_time = open_rows.iloc[-1]['Start Time']
+            hours_worked = calculate_hours_worked(start_time, end_time)
             
             SPREADSHEET_ID = st.secrets["general"]["spreadsheet_id"]
             
@@ -166,7 +169,7 @@ with col2:
             update_requests = [
                 {
                     "range": f"'{selected_staff}'!D{row_number}:E{row_number}",
-                    "values": [[end_time, str(hours_worked)]]  # Update both End Time and Hours Worked
+                    "values": [[end_time, str(hours_worked)]]
                 }
             ]
             
