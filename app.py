@@ -145,13 +145,13 @@ with col2:
             row_number = last_clock_in_row.name + 2
             
             SPREADSHEET_ID = st.secrets["general"]["spreadsheet_id"]
-            RANGE_NAME = f"'{selected_staff}'!D{row_number},E{row_number}"
+            RANGE_NAME = f"'{selected_staff}'!E{row_number}"
             
             credentials = get_google_sheets_credentials()
             service = build('sheets', 'v4', credentials=credentials)
             sheet = service.spreadsheets()
             
-            body = {'values': [[end_time, calculate_hours_worked(last_clock_in_row['Start Time'], end_time)]]}
+            body = {'values': [[calculate_hours_worked(last_clock_in_row['Start Time'], end_time)]]}
             result = sheet.values().update(
                 spreadsheetId=SPREADSHEET_ID,
                 range=RANGE_NAME,
