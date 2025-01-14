@@ -150,11 +150,19 @@ with col2:
             service = build('sheets', 'v4', credentials=credentials)
             sheet = service.spreadsheets()
             
-            body = {'values': [[end_time, calculate_hours_worked(last_clock_in_row['Start Time'], end_time)]]}
-            result = sheet.values().update(
+            update_requests = [
+                {
+                    "range": f"'{selected_staff}'!D{row_number}",
+                    "values": [[end_time]]
+                },
+                {
+                    "range": f"'{selected_staff}'!E{row_number}",
+                    "values": [[calculate_hours_worked(last_clock_in_row['Start Time'], end_time)]]
+                }
+            ]
+            body = {"valueInputOption": "USER_ENTERED", "data": update_requests}
+            result = sheet.values().batchUpdate(
                 spreadsheetId=SPREADSHEET_ID,
-                range=RANGE_NAME,
-                valueInputOption='USER_ENTERED',
                 body=body
             ).execute()
             
