@@ -25,15 +25,13 @@ def get_google_sheets_credentials():
     )
     return credentials
 
-
-
 def get_google_sheet_data(staff_name):
     credentials = get_google_sheets_credentials()
     service = build('sheets', 'v4', credentials=credentials)
     sheet = service.spreadsheets()
     
     SPREADSHEET_ID = st.secrets["general"]["spreadsheet_id"]
-    RANGE_NAME = f"'{staff_name}'!A:E"
+    RANGE_NAME = f"'{staff_name}'!A:E"  # Include Hours Worked column
     
     try:
         result = sheet.values().get(
@@ -45,21 +43,16 @@ def get_google_sheet_data(staff_name):
         if not values:
             return pd.DataFrame(columns=['Date', 'Start Time', 'Alcohol Check', 'End Time', 'Hours Worked'])
         
-        # Get the header from the first row
-        headers = ['Date', 'Start Time', 'Alcohol Check', 'End Time', 'Hours Worked']
+        # Ensure all rows have 5 columns by padding with empty strings if necessary
+        padded_values = [row + [''] * (5 - len(row)) for row in values[1:]]
         
-        # Create DataFrame with explicit column names
-        df = pd.DataFrame(values[1:], columns=headers)
+        # Create DataFrame with all 5 columns
+        df = pd.DataFrame(padded_values, columns=['Date', 'Start Time', 'Alcohol Check', 'End Time', 'Hours Worked'])
         
-        # Ensure all columns exist
-        for col in headers:
-            if col not in df.columns:
-                df[col] = ''
-        
-        # Calculate hours worked for rows with both start and end times
-        df['Hours Worked'] = df.apply(
-            lambda row: calculate_hours_worked(row['Start Time'], row['End Time']) 
-            if row['Start Time'] and row['End Time'] else '', 
+        # Calculate hours worked for any rows missing it
+        mask = (df['End Time'].notna()) & (df['End Time'] != '') & (df['Hours Worked'].isin(['', None]))
+        df.loc[mask, 'Hours Worked'] = df[mask].apply(
+            lambda row: calculate_hours_worked(row['Start Time'], row['End Time']), 
             axis=1
         )
         
@@ -67,8 +60,6 @@ def get_google_sheet_data(staff_name):
     except Exception as e:
         st.error(f"Error loading data for {staff_name}: {str(e)}")
         return pd.DataFrame(columns=['Date', 'Start Time', 'Alcohol Check', 'End Time', 'Hours Worked'])
-
-
 
 def calculate_hours_worked(start_time, end_time):
     if start_time and end_time:
@@ -141,7 +132,6 @@ with col1:
         append_to_sheet(selected_staff, row_data)
         st.success(f'Clocked in at {row_data[1]}')
 
-
 with col2:
     if st.button('End Work', use_container_width=True):
         df = get_google_sheet_data(selected_staff)
@@ -152,8 +142,12 @@ with col2:
             now = datetime.now()
             end_time = now.strftime('%I:%M:%S %p')
             
-            # Get the actual row number in the sheet by counting all rows including the header
-            row_number = len(df) + 1  # Add 1 for the header row
+            # Get the actual row number in the sheet
+            row_number = len(df) + 1  # Add 1 for header row
+            
+            # Get the start time from the last open row
+            last_clock_in_row = open_rows.iloc[-1]
+            hours_worked = calculate_hours_worked(last_clock_in_row['Start Time'], end_time)
             
             SPREADSHEET_ID = st.secrets["general"]["spreadsheet_id"]
             
@@ -161,19 +155,13 @@ with col2:
             service = build('sheets', 'v4', credentials=credentials)
             sheet = service.spreadsheets()
             
-            # Get the start time from the last open row
-            last_clock_in_row = open_rows.iloc[-1]
-            
             update_requests = [
                 {
-                    "range": f"'{selected_staff}'!D{row_number}",
-                    "values": [[end_time]]
-                },
-                {
-                    "range": f"'{selected_staff}'!E{row_number}",
-                    "values": [[calculate_hours_worked(last_clock_in_row['Start Time'], end_time)]]
+                    "range": f"'{selected_staff}'!D{row_number}:E{row_number}",
+                    "values": [[end_time, str(hours_worked)]]  # Update both End Time and Hours Worked
                 }
             ]
+            
             body = {"valueInputOption": "USER_ENTERED", "data": update_requests}
             result = sheet.values().batchUpdate(
                 spreadsheetId=SPREADSHEET_ID,
@@ -188,4 +176,13 @@ with col2:
 st.markdown('### Recent Time Entries')
 df = get_google_sheet_data(selected_staff)
 if not df.empty:
-    st.dataframe(df, use_container_width=True, height=300)
+    # Convert DataFrame to display format
+    display_df = df.copy()
+    st.dataframe(
+        display_df,
+        use_container_width=True,
+        height=300,
+        hide_index=True  # Hide the index column
+    )
+else:
+    st.info("No time entries found")
