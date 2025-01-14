@@ -25,13 +25,15 @@ def get_google_sheets_credentials():
     )
     return credentials
 
+
+
 def get_google_sheet_data(staff_name):
     credentials = get_google_sheets_credentials()
     service = build('sheets', 'v4', credentials=credentials)
     sheet = service.spreadsheets()
     
     SPREADSHEET_ID = st.secrets["general"]["spreadsheet_id"]
-    RANGE_NAME = f"'{staff_name}'!A:E"  # Include Hours Worked column
+    RANGE_NAME = f"'{staff_name}'!A:E"
     
     try:
         result = sheet.values().get(
@@ -43,23 +45,29 @@ def get_google_sheet_data(staff_name):
         if not values:
             return pd.DataFrame(columns=['Date', 'Start Time', 'Alcohol Check', 'End Time', 'Hours Worked'])
         
-        # Ensure all rows have 5 columns by padding with empty strings if necessary
-        padded_values = [row + [''] * (5 - len(row)) for row in values[1:]]
+        # Get the header and data rows
+        headers = values[0] if len(values) > 0 else ['Date', 'Start Time', 'Alcohol Check', 'End Time', 'Hours Worked']
+        data_rows = values[1:] if len(values) > 1 else []
         
-        # Create DataFrame with all 5 columns
-        df = pd.DataFrame(padded_values, columns=['Date', 'Start Time', 'Alcohol Check', 'End Time', 'Hours Worked'])
+        # Ensure each row has 5 columns
+        padded_data = [row + [''] * (5 - len(row)) for row in data_rows]
         
-        # Calculate hours worked for any rows missing it
-        mask = (df['End Time'].notna()) & (df['End Time'] != '') & (df['Hours Worked'].isin(['', None]))
-        df.loc[mask, 'Hours Worked'] = df[mask].apply(
-            lambda row: calculate_hours_worked(row['Start Time'], row['End Time']), 
-            axis=1
-        )
+        # Create DataFrame
+        df = pd.DataFrame(padded_data, columns=['Date', 'Start Time', 'Alcohol Check', 'End Time', 'Hours Worked'])
+        
+        # Calculate hours worked only for rows with both start and end times
+        df.loc[df['End Time'].notna() & (df['End Time'] != '') & (df['Hours Worked'] == ''), 'Hours Worked'] = \
+            df[df['End Time'].notna() & (df['End Time'] != '') & (df['Hours Worked'] == '')].apply(
+                lambda row: calculate_hours_worked(row['Start Time'], row['End Time']), 
+                axis=1
+            )
         
         return df
     except Exception as e:
         st.error(f"Error loading data for {staff_name}: {str(e)}")
         return pd.DataFrame(columns=['Date', 'Start Time', 'Alcohol Check', 'End Time', 'Hours Worked'])
+
+
 
 def calculate_hours_worked(start_time, end_time):
     if start_time and end_time:
