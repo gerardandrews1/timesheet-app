@@ -144,7 +144,7 @@ with col2:
             
             # Update the last row with end time and calculate hours worked
             last_clock_in_row = open_rows.iloc[-1]
-            row_number = last_clock_in_row.name   # Use 1-based indexing
+            row_number = last_clock_in_row.name # Use 1-based indexing
             
             SPREADSHEET_ID = st.secrets["general"]["spreadsheet_id"]
             RANGE_NAME = f"'{selected_staff}'!D{row_number},E{row_number}"
