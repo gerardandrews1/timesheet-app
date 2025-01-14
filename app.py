@@ -1,6 +1,6 @@
 import streamlit as st
 import pandas as pd
-from datetime import datetime
+from datetime import datetime, timedelta
 from google.oauth2 import service_account
 from googleapiclient.discovery import build
 
@@ -41,7 +41,7 @@ def get_google_sheet_data(staff_name):
         
         values = result.get('values', [])
         if not values:
-            return pd.DataFrame(columns=['Date', 'Start Time', 'Alcohol Check', 'End Time'])
+            return pd.DataFrame(columns=['Date', 'Start Time', 'Alcohol Check', 'End Time', 'Hours Worked'])
         
         # Fix: Handle missing columns by ensuring we have all required columns
         df = pd.DataFrame(values[1:])
@@ -54,10 +54,25 @@ def get_google_sheet_data(staff_name):
         # Now rename the columns
         df.columns = expected_columns
         
+        # Calculate hours worked
+        df['Hours Worked'] = df.apply(lambda row: calculate_hours_worked(row['Start Time'], row['End Time']), axis=1)
+        
         return df
     except Exception as e:
         st.error(f"Error loading data for {staff_name}: {str(e)}")
-        return pd.DataFrame(columns=['Date', 'Start Time', 'Alcohol Check', 'End Time'])
+        return pd.DataFrame(columns=['Date', 'Start Time', 'Alcohol Check', 'End Time', 'Hours Worked'])
+
+def calculate_hours_worked(start_time, end_time):
+    if start_time and end_time:
+        try:
+            start = datetime.strptime(start_time, '%I:%M:%S %p')
+            end = datetime.strptime(end_time, '%I:%M:%S %p')
+            hours_worked = (end - start).total_seconds() / 3600
+            return round(hours_worked, 2)
+        except ValueError:
+            return ''
+    else:
+        return ''
 
 def append_to_sheet(staff_name, row_data):
     credentials = get_google_sheets_credentials()
@@ -68,7 +83,7 @@ def append_to_sheet(staff_name, row_data):
     RANGE_NAME = f"'{staff_name}'!A:E"
     
     # Ensure row_data has all required columns
-    while len(row_data) < 4:  # We expect 4 columns
+    while len(row_data) < 5:  # We expect 5 columns now (Date, Start Time, Alcohol Check, End Time, Hours Worked)
         row_data.append('')
         
     values = [row_data]
@@ -106,6 +121,7 @@ with col1:
             now.strftime('%Y/%m/%d'),
             now.strftime('%I:%M:%S %p'),
             '0.00mg',
+            '',
             ''
         ]
         append_to_sheet(selected_staff, row_data)
@@ -118,17 +134,17 @@ with col2:
         if not df.empty and any(df['End Time'].isna() | (df['End Time'] == '')):
             now = datetime.now()
             end_time = now.strftime('%I:%M:%S %p')
-            # Update the last row with end time
+            # Update the last row with end time and calculate hours worked
             row_number = df[df['End Time'].isna() | (df['End Time'] == '')].index[-1] + 2
             
             SPREADSHEET_ID = st.secrets["general"]["spreadsheet_id"]
-            RANGE_NAME = f"'{selected_staff}'!D{row_number}"
+            RANGE_NAME = f"'{selected_staff}'!D{row_number},E{row_number}"
             
             credentials = get_google_sheets_credentials()
             service = build('sheets', 'v4', credentials=credentials)
             sheet = service.spreadsheets()
             
-            body = {'values': [[end_time]]}
+            body = {'values': [[end_time, calculate_hours_worked(df.iloc[-1]['Start Time'], end_time)]]}
             result = sheet.values().update(
                 spreadsheetId=SPREADSHEET_ID,
                 range=RANGE_NAME,
@@ -145,7 +161,8 @@ st.markdown('### Recent Time Entries')
 df = get_google_sheet_data(selected_staff)
 if not df.empty:
     st.dataframe(
-        df.sort_values('Date', ascending=False),
+        df,
+        columns=['Date', 'Start Time', 'Alcohol Check', 'End Time', 'Hours Worked'],
         hide_index=True,
         use_container_width=True
     )
