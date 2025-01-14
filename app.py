@@ -25,6 +25,7 @@ def get_google_sheets_credentials():
     )
     return credentials
 
+
 def get_google_sheet_data(staff_name):
     credentials = get_google_sheets_credentials()
     service = build('sheets', 'v4', credentials=credentials)
@@ -43,16 +44,14 @@ def get_google_sheet_data(staff_name):
         if not values:
             return pd.DataFrame(columns=['Date', 'Start Time', 'Alcohol Check', 'End Time', 'Hours Worked'])
         
-        # Fix: Handle missing columns by ensuring we have all required columns
+        # Create the DataFrame, handling missing columns
         df = pd.DataFrame(values[1:])
-        expected_columns = ['Date', 'Start Time', 'Alcohol Check', 'End Time']
+        df.columns = ['Date', 'Start Time', 'Alcohol Check', 'End Time', 'Hours Worked']
         
-        # If we have data but wrong number of columns, pad with empty columns
-        while len(df.columns) < len(expected_columns):
-            df[len(df.columns)] = ''
-            
-        # Now rename the columns
-        df.columns = expected_columns
+        # Fill in any missing columns with empty strings
+        for col in ['Date', 'Start Time', 'Alcohol Check', 'End Time', 'Hours Worked']:
+            if col not in df.columns:
+                df[col] = ''
         
         # Calculate hours worked
         df['Hours Worked'] = df.apply(lambda row: calculate_hours_worked(row['Start Time'], row['End Time']), axis=1)
