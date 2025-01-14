@@ -25,6 +25,8 @@ def get_google_sheets_credentials():
     )
     return credentials
 
+
+
 def get_google_sheet_data(staff_name):
     credentials = get_google_sheets_credentials()
     service = build('sheets', 'v4', credentials=credentials)
@@ -43,23 +45,30 @@ def get_google_sheet_data(staff_name):
         if not values:
             return pd.DataFrame(columns=['Date', 'Start Time', 'Alcohol Check', 'End Time', 'Hours Worked'])
         
-        # Create the DataFrame, handling varying number of columns
-        df = pd.DataFrame(values[1:])
+        # Get the header from the first row
+        headers = ['Date', 'Start Time', 'Alcohol Check', 'End Time', 'Hours Worked']
         
-        # Ensure we have the expected columns, filling in missing ones with empty strings
-        expected_columns = ['Date', 'Start Time', 'Alcohol Check', 'End Time', 'Hours Worked']
-        for col in expected_columns:
+        # Create DataFrame with explicit column names
+        df = pd.DataFrame(values[1:], columns=headers)
+        
+        # Ensure all columns exist
+        for col in headers:
             if col not in df.columns:
                 df[col] = ''
-        df = df[expected_columns]
         
-        # Calculate hours worked
-        df['Hours Worked'] = df.apply(lambda row: calculate_hours_worked(row['Start Time'], row['End Time']), axis=1)
+        # Calculate hours worked for rows with both start and end times
+        df['Hours Worked'] = df.apply(
+            lambda row: calculate_hours_worked(row['Start Time'], row['End Time']) 
+            if row['Start Time'] and row['End Time'] else '', 
+            axis=1
+        )
         
         return df
     except Exception as e:
         st.error(f"Error loading data for {staff_name}: {str(e)}")
         return pd.DataFrame(columns=['Date', 'Start Time', 'Alcohol Check', 'End Time', 'Hours Worked'])
+
+
 
 def calculate_hours_worked(start_time, end_time):
     if start_time and end_time:
