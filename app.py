@@ -25,7 +25,6 @@ def get_google_sheets_credentials():
     )
     return credentials
 
-
 def get_google_sheet_data(staff_name):
     credentials = get_google_sheets_credentials()
     service = build('sheets', 'v4', credentials=credentials)
@@ -61,7 +60,6 @@ def get_google_sheet_data(staff_name):
     except Exception as e:
         st.error(f"Error loading data for {staff_name}: {str(e)}")
         return pd.DataFrame(columns=['Date', 'Start Time', 'Alcohol Check', 'End Time', 'Hours Worked'])
-
 
 def calculate_hours_worked(start_time, end_time):
     if start_time and end_time:
@@ -146,13 +144,13 @@ with col2:
             row_number = last_clock_in_row.name + 2
             
             SPREADSHEET_ID = st.secrets["general"]["spreadsheet_id"]
-            RANGE_NAME = f"'{selected_staff}'!E{row_number}"
+            RANGE_NAME = f"'{selected_staff}'!D{row_number},E{row_number}"
             
             credentials = get_google_sheets_credentials()
             service = build('sheets', 'v4', credentials=credentials)
             sheet = service.spreadsheets()
             
-            body = {'values': [[calculate_hours_worked(last_clock_in_row['Start Time'], end_time)]]}
+            body = {'values': [[end_time, calculate_hours_worked(last_clock_in_row['Start Time'], end_time)]]}
             result = sheet.values().update(
                 spreadsheetId=SPREADSHEET_ID,
                 range=RANGE_NAME,
@@ -168,4 +166,4 @@ with col2:
 st.markdown('### Recent Time Entries')
 df = get_google_sheet_data(selected_staff)
 if not df.empty:
-    st.write(df)
+    st.dataframe(df, use_container_width=True)
