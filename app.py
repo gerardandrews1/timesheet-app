@@ -15,6 +15,7 @@ JST = pytz.timezone('Asia/Tokyo')
 STAFF_MEMBERS = [
     "Jye",
     "Harry",
+    "Oisin",
     "Colm",
     "Rose",
     "Joe",
@@ -42,7 +43,7 @@ def get_google_sheet_data(staff_name):
     sheet = service.spreadsheets()
     
     SPREADSHEET_ID = st.secrets["general"]["spreadsheet_id"]
-    RANGE_NAME = f"'{staff_name}'!A:E"
+    RANGE_NAME = f"'{staff_name}'!A:F"  # Updated to include new column
     
     try:
         result = sheet.values().get(
@@ -53,7 +54,7 @@ def get_google_sheet_data(staff_name):
         values = result.get('values', [])
         
         # Define the columns we expect
-        expected_columns = ['Date', 'Start Time', 'Alcohol Check', 'End Time', 'Hours Worked']
+        expected_columns = ['Date', 'Start Time', 'Alcohol Check', 'End Time', 'Hours Worked', 'Early Pick Up']
         
         if not values or len(values) <= 1:  # If no data or only header
             return pd.DataFrame(columns=expected_columns)
@@ -99,10 +100,10 @@ def append_to_sheet(staff_name, row_data):
     sheet = service.spreadsheets()
     
     SPREADSHEET_ID = st.secrets["general"]["spreadsheet_id"]
-    RANGE_NAME = f"'{staff_name}'!A:E"
+    RANGE_NAME = f"'{staff_name}'!A:F"  # Updated to include new column
     
     # Ensure row_data has all required columns
-    while len(row_data) < 5:  # We expect 5 columns now (Date, Start Time, Alcohol Check, End Time, Hours Worked)
+    while len(row_data) < 6:  # Updated to expect 6 columns
         row_data.append('')
         
     values = [row_data]
@@ -131,18 +132,19 @@ if not df.empty and any(df['End Time'] == ''):
     last_clock_in = df[df['End Time'] == ''].iloc[-1]['Start Time']
     st.info(f"You last clocked in at {last_clock_in}")
 
-# Create two columns for Start and End buttons
-col1, col2 = st.columns(2)
+# Create three columns for Start, End, and Early Morning Shift buttons
+col1, col2, col3 = st.columns(3)
 
 with col1:
     if st.button('Start Work', use_container_width=True):
-        now = datetime.now(JST)  # Get current time in JST
+        now = datetime.now(JST)
         row_data = [
             now.strftime('%Y/%m/%d'),
             now.strftime('%I:%M:%S %p'),
             '0.00mg',
             '',
-            ''
+            '',
+            ''  # Empty Early Pick Up field
         ]
         append_to_sheet(selected_staff, row_data)
         st.success(f'Clocked in at {row_data[1]}')
@@ -155,7 +157,7 @@ with col2:
         open_rows = df[df['End Time'].fillna('') == '']
         
         if not open_rows.empty:
-            now = datetime.now(JST)  # Get current time in JST
+            now = datetime.now(JST)
             end_time = now.strftime('%I:%M:%S %p')
             
             # Get the last row number from the dataframe
@@ -188,6 +190,27 @@ with col2:
             st.success(f'Clocked out at {end_time}')
         else:
             st.warning('No open clock-in entry found')
+
+with col3:
+    if st.button('Early Morning Shift', use_container_width=True):
+        now = datetime.now(JST)
+        # Set fixed times for early morning shift
+        start_time = '06:00:00 AM'
+        end_time = '08:30:00 AM'
+        
+        # Calculate hours worked
+        hours = calculate_hours_worked(start_time, end_time)
+        
+        row_data = [
+            now.strftime('%Y/%m/%d'),  # Current date
+            start_time,
+            '0.00mg',
+            end_time,
+            str(hours),
+            'Yes'  # Mark as early pickup
+        ]
+        append_to_sheet(selected_staff, row_data)
+        st.success(f'Added early morning shift: {start_time} - {end_time}')
 
 # Display timesheet
 st.markdown('### Recent Time Entries')
