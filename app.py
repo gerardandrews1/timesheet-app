@@ -6,7 +6,7 @@ from google.oauth2 import service_account
 from googleapiclient.discovery import build
 
 # Set page config
-st.set_page_config(page_title="Time Clock", layout="wide")
+st.set_page_config(page_title="Clock In/Out", layout="wide")
 
 # Set timezone to Japan
 JST = pytz.timezone('Asia/Tokyo')
@@ -24,7 +24,8 @@ STAFF_MEMBERS = [
     "Andrew",
     "Kris",
     "Ben",
-    "Isaac"
+    "Isaac",
+    "Christian"
     # Add all staff names here
 ]
 
